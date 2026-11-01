@@ -1,0 +1,4 @@
+DIRS= \
+    xgiphid \
+    xboxgip \
+    tools

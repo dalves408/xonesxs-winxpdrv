@@ -1,0 +1,14 @@
+# WDK 7.1 build output
+obj*/
+build*.log
+build*.err
+build*.wrn
+
+# Built packages (published as GitHub Releases instead)
+releases/
+
+# Sysinternals DebugView (not redistributable; download from Microsoft)
+debugview/
+
+# Raw USB traces from a local machine
+trace/*.etl

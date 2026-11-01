@@ -1,0 +1,18 @@
+TARGETNAME=xboxgip
+TARGETTYPE=DRIVER
+
+KMDF_VERSION_MAJOR=1
+
+MSC_WARNING_LEVEL=/W4
+
+# Set by build.cmd so logs show which release is running.
+!IFDEF XGIP_REVISION
+C_DEFINES=$(C_DEFINES) -DXGIP_REVISION=$(XGIP_REVISION)
+!ENDIF
+
+SOURCES= \
+    driver.c \
+    usb.c \
+    gip.c \
+    hid.c \
+    xinput.c

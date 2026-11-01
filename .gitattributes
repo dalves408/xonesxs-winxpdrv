@@ -1,0 +1,2 @@
+# Windows-only project: keep CRLF in the working tree for the WDK tools.
+* text=auto eol=crlf

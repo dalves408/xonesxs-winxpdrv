@@ -1,0 +1,116 @@
+;
+; xboxgip.inf - Xbox One / Series controller (wired USB, GIP) for Windows XP SP2+
+;
+; Installs xgiphid.sys as the HID minidriver (function driver) and xboxgip.sys
+; (KMDF 1.9) as its lower filter. hidclass then creates the HID game controller
+; child that input.inf / DirectInput pick up.
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = HIDClass
+ClassGuid   = {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider    = %ProviderName%
+DriverVer   = 10/31/2026,0.1.0.0
+
+[SourceDisksNames]
+1 = %DiskName%,,,
+
+[SourceDisksFiles]
+xboxgip.sys             = 1
+xgiphid.sys             = 1
+WdfCoInstaller01009.dll = 1
+
+[DestinationDirs]
+DefaultDestDir         = 12
+CoInstaller_CopyFiles  = 11
+
+[Manufacturer]
+%MfgName% = XboxGip, NTx86, NTamd64
+
+[XboxGip.NTx86]
+%XboxOne.DeviceDesc%       = XboxGip_Inst, USB\VID_045E&PID_02D1
+%XboxOne2015.DeviceDesc%   = XboxGip_Inst, USB\VID_045E&PID_02DD
+%XboxOneElite.DeviceDesc%  = XboxGip_Inst, USB\VID_045E&PID_02E3
+%XboxOneS.DeviceDesc%      = XboxGip_Inst, USB\VID_045E&PID_02EA
+%XboxElite2.DeviceDesc%    = XboxGip_Inst, USB\VID_045E&PID_0B00
+%XboxSeries.DeviceDesc%    = XboxGip_Inst, USB\VID_045E&PID_0B12
+%XUsb.DeviceDesc%          = XUsb_Inst, XboxGip\XUsbInterface
+
+[XboxGip.NTamd64]
+%XboxOne.DeviceDesc%       = XboxGip_Inst, USB\VID_045E&PID_02D1
+%XboxOne2015.DeviceDesc%   = XboxGip_Inst, USB\VID_045E&PID_02DD
+%XboxOneElite.DeviceDesc%  = XboxGip_Inst, USB\VID_045E&PID_02E3
+%XboxOneS.DeviceDesc%      = XboxGip_Inst, USB\VID_045E&PID_02EA
+%XboxElite2.DeviceDesc%    = XboxGip_Inst, USB\VID_045E&PID_0B00
+%XboxSeries.DeviceDesc%    = XboxGip_Inst, USB\VID_045E&PID_0B12
+%XUsb.DeviceDesc%          = XUsb_Inst, XboxGip\XUsbInterface
+
+; Raw child PDO created by xboxgip.sys for XInput. xboxgip.sys answers its
+; I/O itself, so it gets a null driver (no service).
+[XUsb_Inst.NT]
+
+[XUsb_Inst.NT.Services]
+AddService = , 0x00000002
+
+[XboxGip_Inst.NT]
+CopyFiles = XboxGip_CopyFiles
+
+[XboxGip_CopyFiles]
+xboxgip.sys
+xgiphid.sys
+
+[XboxGip_Inst.NT.HW]
+AddReg = XboxGip_HW_AddReg
+
+[XboxGip_HW_AddReg]
+HKR,,"LowerFilters",0x00010000,"xboxgip"
+
+[XboxGip_Inst.NT.Services]
+AddService = xgiphid, 0x00000002, xgiphid_Service
+AddService = xboxgip, , xboxgip_Service
+
+[xgiphid_Service]
+DisplayName    = %xgiphid.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\xgiphid.sys
+LoadOrderGroup = Extended Base
+
+[xboxgip_Service]
+DisplayName    = %xboxgip.SvcDesc%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\xboxgip.sys
+
+[XboxGip_Inst.NT.CoInstallers]
+AddReg    = CoInstaller_AddReg
+CopyFiles = CoInstaller_CopyFiles
+
+[CoInstaller_CopyFiles]
+WdfCoInstaller01009.dll
+
+[CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000,"WdfCoInstaller01009.dll,WdfCoInstaller"
+
+[XboxGip_Inst.NT.Wdf]
+KmdfService = xboxgip, xboxgip_wdfsect
+
+[xboxgip_wdfsect]
+KmdfLibraryVersion = 1.9
+
+[Strings]
+ProviderName           = "Xbone XP Project"
+MfgName                = "Microsoft"
+DiskName               = "Xbox GIP Driver Disk"
+XboxOne.DeviceDesc     = "Xbox One Controller (GIP)"
+XboxOne2015.DeviceDesc = "Xbox One Controller (GIP)"
+XboxOneElite.DeviceDesc= "Xbox One Elite Controller (GIP)"
+XboxOneS.DeviceDesc    = "Xbox One S Controller (GIP)"
+XboxElite2.DeviceDesc  = "Xbox Elite Series 2 Controller (GIP)"
+XboxSeries.DeviceDesc  = "Xbox Series X|S Controller (GIP)"
+XUsb.DeviceDesc        = "Xbox GIP XInput Interface"
+xgiphid.SvcDesc        = "Xbox GIP HID minidriver"
+xboxgip.SvcDesc        = "Xbox GIP USB driver"
