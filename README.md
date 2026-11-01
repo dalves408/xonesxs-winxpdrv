@@ -168,3 +168,13 @@ This driver stands on reverse-engineering work by others:
 * [OpenXinput](https://github.com/Nemirtingas/OpenXinput) and [SharpXusb](https://github.com/TheNathannator/SharpXusb): the XUSB (XInput) IOCTL interface.
 
 No code was copied from these projects; the driver is an independent implementation for the Windows XP driver model.
+
+## License
+
+Copyright (C) 2026 dalves408
+
+This program is free software. You can redistribute it and/or modify it under the terms of the **GNU General Public License, version 2 only** (`GPL-2.0-only`), as published by the Free Software Foundation. See [LICENSE](LICENSE) for the full text.
+
+It is distributed in the hope that it will be useful, but **without any warranty**, without even the implied warranty of merchantability or fitness for a particular purpose.
+
+`WdfCoInstaller01009.dll` in the release packages isn't covered by this license. It is Microsoft's KMDF co-installer, redistributed under the WDK 7.1 redistribution terms.

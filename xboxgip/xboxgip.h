@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 /*
  * xboxgip.sys - KMDF lower filter that drives an Xbox One / Series controller
  * over USB (GIP protocol) and answers hidclass requests forwarded by xgiphid.sys.

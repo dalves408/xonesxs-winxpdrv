@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 #include "xboxgip.h"
 
 /* Per-write context, so a completed init packet can kick off the next one. */

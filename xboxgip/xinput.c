@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 /*
  * XInput support: a raw child PDO that registers the XUSB device interface
  * and answers the IOCTLs xinput*.dll sends to Microsoft's Xbox 360 driver.

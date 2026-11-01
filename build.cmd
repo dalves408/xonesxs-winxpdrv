@@ -61,6 +61,7 @@ if %FAIL%==1 (
 )
 
 if exist "%ROOT%\CHANGELOG.md" copy /y "%ROOT%\CHANGELOG.md" "%REL%\" >nul
+if exist "%ROOT%\LICENSE" copy /y "%ROOT%\LICENSE" "%REL%\" >nul
 echo.
 echo Release %REV% ready in %REL%
 exit /b 0
@@ -87,4 +88,6 @@ if exist "%ROOT%\tools\xusbtest\%3\%2\xusbtest.exe" (
 rem Stamp today's date and the revision into DriverVer (0.1.<rev>.0).
 powershell -NoProfile -Command "(Get-Content '%ROOT%\inf\xboxgip.inf') -replace '^DriverVer\s*=.*$', ('DriverVer   = ' + (Get-Date -Format 'MM/dd/yyyy') + ',0.1.%XGIP_REVISION%.0') | Set-Content -Encoding ASCII '%OUT%\xboxgip.inf'" || set FAIL=1
 copy /y "%WDK%\redist\wdf\%1\WdfCoInstaller01009.dll" "%OUT%\" >nul || set FAIL=1
+rem GPL-2.0: ship the license next to the binaries.
+copy /y "%ROOT%\LICENSE" "%OUT%\" >nul || set FAIL=1
 goto :eof

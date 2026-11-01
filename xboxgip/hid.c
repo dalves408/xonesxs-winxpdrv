@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 /*
  * HID side: answers the internal IOCTLs hidclass sends through xgiphid.sys.
  * hidclass passes buffers for these METHOD_NEITHER IOCTLs in Irp->UserBuffer

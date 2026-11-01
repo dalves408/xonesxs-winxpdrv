@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 /*
  * xusbtest - talks to XUSB (XInput) device interfaces directly.
  *

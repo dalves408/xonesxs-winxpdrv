@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Copyright (C) 2026 dalves408 */
 #include "xboxgip.h"
 
 #ifdef ALLOC_PRAGMA
