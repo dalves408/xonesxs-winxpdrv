@@ -15,7 +15,12 @@ DriverEntry(
 {
     WDF_DRIVER_CONFIG config;
 
+#if XGIP_BETA
+    KdPrint(("xboxgip: revision %u beta %u (built %s %s)\n",
+             XGIP_REVISION, XGIP_BETA, __DATE__, __TIME__));
+#else
     KdPrint(("xboxgip: revision %u (built %s %s)\n", XGIP_REVISION, __DATE__, __TIME__));
+#endif
 
     WDF_DRIVER_CONFIG_INIT(&config, XgipEvtDeviceAdd);
     return WdfDriverCreate(DriverObject, RegistryPath, WDF_NO_OBJECT_ATTRIBUTES,
@@ -70,6 +75,13 @@ XgipEvtDeviceAdd(
     WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
     attributes.ParentObject = device;
     status = WdfTimerCreate(&timerConfig, &attributes, &context->InitTimer);
+    if (!NT_SUCCESS(status)) {
+        return status;
+    }
+
+    WDF_TIMER_CONFIG_INIT_PERIODIC(&timerConfig, XgipEvtKeepAliveTimer, XGIP_KEEPALIVE_MS);
+    timerConfig.AutomaticSerialization = FALSE;
+    status = WdfTimerCreate(&timerConfig, &attributes, &context->KeepAliveTimer);
     if (!NT_SUCCESS(status)) {
         return status;
     }

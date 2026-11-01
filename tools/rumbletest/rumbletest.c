@@ -45,7 +45,9 @@ DEFINE_GUID(GuidXusbInterface,
 
 #define RUMBLE_REPORT_ID    2
 #define MICROSOFT_VID       0x045E
-#define XBOXGIP_PRODUCT     L"Xbox Controller (GIP)"    /* xboxgip hid.c, IOCTL_HID_GET_STRING */
+/* xboxgip's HID product string (hid.c): Xbox 360 mode, then native mode. */
+#define XBOXGIP_PRODUCT_X360    L"XBOX 360 For Windows (Controller)"
+#define XBOXGIP_PRODUCT         L"Xbox Controller (GIP)"
 
 #define TRIGGER_DEADZONE    5           /* percent */
 #define PULSE_MS            200
@@ -174,13 +176,18 @@ OpenRumbleHid(
             continue;
         }
 
-        /* Only xboxgip's own collection; other gamepads use other report layouts. */
+        /*
+         * Only xboxgip's own collection; other gamepads use other report
+         * layouts. A real Xbox 360 pad shares the 360 name but has no output
+         * report, so the length check below keeps it out.
+         */
         match = FALSE;
         attributes.Size = sizeof(attributes);
         if (HidD_GetAttributes(h, &attributes) &&
             attributes.VendorID == MICROSOFT_VID &&
             HidD_GetProductString(h, product, sizeof(product)) &&
-            wcscmp(product, XBOXGIP_PRODUCT) == 0 &&
+            (wcscmp(product, XBOXGIP_PRODUCT_X360) == 0 ||
+             wcscmp(product, XBOXGIP_PRODUCT) == 0) &&
             HidD_GetPreparsedData(h, &preparsed)) {
             if (HidP_GetCaps(preparsed, &caps) == HIDP_STATUS_SUCCESS &&
                 caps.UsagePage == 0x01 && caps.Usage == 0x05 &&

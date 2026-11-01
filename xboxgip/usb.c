@@ -305,6 +305,10 @@ XgipEvtPrepareHardware(
     /* Series X|S pads have a Share button. */
     context->HasShareButton = (context->DeviceDescriptor.idProduct == 0x0B12);
 
+#if XGIP_X360_MODE
+    XgipRegisterX360Name();
+#endif
+
     KdPrint(("xboxgip: startup mode: %s\n", XGIP_XPAD_MODE ? "xpad (Linux)" : "Windows"));
 
 #if !XGIP_XPAD_MODE
@@ -477,6 +481,11 @@ XgipEvtD0Entry(
      */
 #endif
 
+#if XGIP_KEEPALIVE
+    /* Experimental: keeps the pad from switching itself off when idle (gip.c). */
+    WdfTimerStart(context->KeepAliveTimer, WDF_REL_TIMEOUT_IN_MS(XGIP_KEEPALIVE_MS));
+#endif
+
     return STATUS_SUCCESS;
 }
 
@@ -491,6 +500,7 @@ XgipEvtD0Exit(
     UNREFERENCED_PARAMETER(TargetState);
 
     WdfTimerStop(context->InitTimer, TRUE);
+    WdfTimerStop(context->KeepAliveTimer, TRUE);
     WdfIoTargetStop(WdfUsbTargetPipeGetIoTarget(context->InPipe), WdfIoTargetCancelSentIo);
     WdfIoTargetStop(WdfUsbTargetPipeGetIoTarget(context->OutPipe), WdfIoTargetCancelSentIo);
 

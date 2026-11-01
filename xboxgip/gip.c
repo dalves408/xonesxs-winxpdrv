@@ -163,6 +163,36 @@ XgipEvtInitTimer(
     GipStartInit(context);
 }
 
+/*
+ * Keep-alive: once the pad has started talking, resend power-on and auth-done
+ * periodically. Left idle on XP, the pad otherwise switches itself off after
+ * a while. Rumble packets are deliberately not used: they would cancel any
+ * rumble a game is playing.
+ */
+VOID
+XgipEvtKeepAliveTimer(
+    WDFTIMER Timer
+    )
+{
+    PDEVICE_CONTEXT context = GetDeviceContext(WdfTimerGetParentObject(Timer));
+    UCHAR packet[GIP_MAX_PACKET];
+
+    /* Nothing to keep alive until the pad has announced itself. */
+    if (context->RxCount == 0) {
+        return;
+    }
+
+    KdPrint(("xboxgip: keep-alive\n"));
+
+    RtlCopyMemory(packet, GipPowerOn, sizeof(GipPowerOn));
+    packet[2] = GipNextSequence(context);
+    XgipUsbWrite(context, packet, sizeof(GipPowerOn), FALSE);
+
+    RtlCopyMemory(packet, GipAuthDone, sizeof(GipAuthDone));
+    packet[2] = GipNextSequence(context);
+    XgipUsbWrite(context, packet, sizeof(GipAuthDone), FALSE);
+}
+
 /* ------------------------------------------------------------------------- */
 /* Outgoing packets                                                           */
 /* ------------------------------------------------------------------------- */

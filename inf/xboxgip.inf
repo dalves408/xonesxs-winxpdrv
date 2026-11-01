@@ -55,6 +55,13 @@ AddService = , 0x00000002
 
 [XboxGip_Inst.NT]
 CopyFiles = XboxGip_CopyFiles
+AddReg    = XboxGip_Joystick_AddReg
+
+; The driver presents the pad to games as a wired Xbox 360 controller
+; (HID 045E:028E). DirectInput takes a joystick's name from this key, so games
+; see the same name as with Microsoft's 360 driver.
+[XboxGip_Joystick_AddReg]
+HKLM,"SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E","OEMName",0x00000000,"XBOX 360 For Windows (Controller)"
 
 [XboxGip_CopyFiles]
 xboxgip.sys

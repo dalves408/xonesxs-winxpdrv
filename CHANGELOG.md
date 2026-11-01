@@ -1,6 +1,6 @@
 # Changelog
 
-Each release is built into its own folder, `releases\rNN\`, and is never overwritten. Every release folder contains:
+Internal test builds go to `releases\rNN-betaK\` (`build.cmd`); the release goes to `releases\rNN\` (`build.cmd release`), which also removes that release's beta folders. Folders are never overwritten. Each one contains:
 
 | Folder | Contents |
 |---|---|
@@ -8,8 +8,27 @@ Each release is built into its own folder, `releases\rNN\`, and is never overwri
 | `x86-chk` | XP 32-bit debug build, logs to DebugView |
 | `amd64` | XP x64 release build |
 | `amd64-chk` | XP x64 debug build |
+| `x86-x360` | XP 32-bit, presented to games as an Xbox 360 controller (from r09) |
+| `amd64-x360` | XP x64, presented to games as an Xbox 360 controller (from r09) |
 
-The debug build's first log line is `xboxgip: revision N`. The INF version is `0.1.N.0`.
+The debug build's first log line is `xboxgip: revision N beta K` (or `revision N` for a release). The INF version is `0.1.N.K` for betas and `0.1.N.100` for releases. Releases up to r08 used `0.1.N.0`.
+
+## r09 (2026-11-01): Xbox 360 compatibility packages
+
+The driver behaves as tested in r09 beta 3.
+
+* **New Xbox 360 packages** (`x86-x360`, `amd64-x360`): the pad is presented to games exactly as Microsoft's XP driver presents a wired Xbox 360 controller:
+  * USB ID `045E:028E`, in DirectInput and XInput.
+  * DirectInput name **"XBOX 360 For Windows (Controller)"**, XP's wording. The INF registers it, and the driver sets it again on every start.
+  * Device Manager name "Xbox 360 Controller for Windows".
+  * The 360's layout: 10 buttons, D-pad hat, 5 axes, with both triggers sharing Z.
+
+  Many games from 2005–2010 special-case this name and layout. As on a real 360 pad, the Xbox and Share buttons aren't visible to DirectInput, and pulling both triggers at once cancels out on Z. The native packages are unchanged. The layout is selected at build time with `XGIP_X360_MODE`.
+* **Tested:** The Godfather: The Game (2006) works with the 360 package. EA's `default.ini` ships a `[XBOX_360_For_Windows_(Controller):10:1:5]` section, which matches the driver's XP 360 name and layout exactly, so no ini edits are needed. Betas 1 and 2 used the Vista-era name "Controller (XBOX 360 For Windows)" and weren't recognized.
+* `rumbletest` finds the controller under either name.
+* `xusbtest xinput [n]` reads the controller through Microsoft's own XInput DLL (`xinput1_3.dll` etc.), the way XInput games do.
+* `build.cmd` now produces six packages per build: the four native ones plus the two 360 ones. Internal builds are numbered as betas of the next release (`r09-beta1`, `r09-beta2`, …), and each build is also zipped whole.
+* **Known issue: idle shutdown.** Left idle on XP, the controller switches itself off after a while and goes back to searching for its paired console (slow flashing). Unplug and replug it to bring it back. An experimental keep-alive is in the source but switched off (`XGIP_KEEPALIVE`). A Windows 11 trace shows Windows sends a 9-byte request every ~5 s that the controller answers with 17 bytes; the bytes still need capturing for a future release.
 
 ## r08 (2026-11-01): Windows-style USB setup, rumbletest strength inverted, power-on findings
 

@@ -7,6 +7,8 @@
  *   xusbtest poll [n]   print state from the first interface for n seconds (default 10)
  *   xusbtest rumble     run both motors for one second on the first interface
  *   xusbtest state10    dump state using the XUSB 1.0 request format
+ *   xusbtest xinput [n] go through Microsoft's XInput DLL, as a game does:
+ *                       list the 4 player slots, then print changes for n s
  *
  * Works against xboxgip.sys on XP and against Microsoft's XUSB drivers
  * (xusb22 / xinputhid) on newer Windows, which makes it a reference check.
@@ -24,6 +26,112 @@ DEFINE_GUID(GuidXusbInterface,
 #define IOCTL_XUSB_GET_INFORMATION  0x80006000
 #define IOCTL_XUSB_GET_STATE        0x8000E00C
 #define IOCTL_XUSB_SET_STATE        0x8000A010
+
+/* XInput API types (xinput.h isn't part of the WDK). */
+typedef struct _XI_GAMEPAD {
+    WORD  wButtons;
+    BYTE  bLeftTrigger;
+    BYTE  bRightTrigger;
+    SHORT sThumbLX;
+    SHORT sThumbLY;
+    SHORT sThumbRX;
+    SHORT sThumbRY;
+} XI_GAMEPAD;
+
+typedef struct _XI_STATE {
+    DWORD      dwPacketNumber;
+    XI_GAMEPAD Gamepad;
+} XI_STATE;
+
+typedef DWORD (WINAPI *XI_GET_STATE)(DWORD UserIndex, XI_STATE *State);
+
+/*
+ * Loads Microsoft's XInput DLL the way a game would and reads the player
+ * slots. This is the path real XInput games use; the other modes talk to the
+ * driver's XUSB interface directly.
+ */
+static int
+XinputTest(
+    int Seconds
+    )
+{
+    static const char *dlls[] = {
+        "xinput1_3.dll", "xinput1_2.dll", "xinput1_1.dll", "xinput9_1_0.dll"
+    };
+    XI_GET_STATE getState = NULL;
+    XI_STATE state;
+    DWORD lastPacket = 0xFFFFFFFF;
+    DWORD result;
+    DWORD slot;
+    DWORD end;
+    int connectedSlot = -1;
+    HMODULE dll = NULL;
+    int i;
+
+    for (i = 0; i < (int)(sizeof(dlls) / sizeof(dlls[0])); i++) {
+        dll = LoadLibraryA(dlls[i]);
+        if (dll != NULL) {
+            getState = (XI_GET_STATE)GetProcAddress(dll, "XInputGetState");
+            if (getState != NULL) {
+                printf("Using %s\n", dlls[i]);
+                break;
+            }
+            FreeLibrary(dll);
+            dll = NULL;
+        }
+    }
+
+    if (getState == NULL) {
+        printf("No XInput DLL found. Install the DirectX 9.0c (June 2010) runtime,\n");
+        printf("which provides xinput1_3.dll.\n");
+        return 1;
+    }
+
+    for (slot = 0; slot < 4; slot++) {
+        memset(&state, 0, sizeof(state));
+        result = getState(slot, &state);
+        if (result == ERROR_SUCCESS) {
+            printf("  player %lu: connected (packet %lu, buttons %04X)\n",
+                   slot + 1, state.dwPacketNumber, state.Gamepad.wButtons);
+            if (connectedSlot < 0) {
+                connectedSlot = (int)slot;
+            }
+        } else if (result == ERROR_DEVICE_NOT_CONNECTED) {
+            printf("  player %lu: not connected\n", slot + 1);
+        } else {
+            printf("  player %lu: error %lu\n", slot + 1, result);
+        }
+    }
+
+    if (connectedSlot < 0) {
+        printf("XInput sees no controller.\n");
+        FreeLibrary(dll);
+        return 1;
+    }
+
+    printf("Polling player %d for %d s; move the sticks and press buttons:\n",
+           connectedSlot + 1, Seconds);
+    end = GetTickCount() + Seconds * 1000;
+    while (GetTickCount() < end) {
+        result = getState((DWORD)connectedSlot, &state);
+        if (result != ERROR_SUCCESS) {
+            printf("  error %lu\n", result);
+            break;
+        }
+        if (state.dwPacketNumber != lastPacket) {
+            printf("  pkt %-6lu btn %04X LT %3u RT %3u L(%6d,%6d) R(%6d,%6d)\n",
+                   state.dwPacketNumber, state.Gamepad.wButtons,
+                   state.Gamepad.bLeftTrigger, state.Gamepad.bRightTrigger,
+                   state.Gamepad.sThumbLX, state.Gamepad.sThumbLY,
+                   state.Gamepad.sThumbRX, state.Gamepad.sThumbRY);
+            lastPacket = state.dwPacketNumber;
+        }
+        Sleep(16);
+    }
+
+    FreeLibrary(dll);
+    return 0;
+}
 
 static HANDLE
 OpenInterface(
@@ -204,6 +312,10 @@ main(
     HANDLE h;
     int found = 0;
     const char *mode = (argc > 1) ? argv[1] : "list";
+
+    if (strcmp(mode, "xinput") == 0) {
+        return XinputTest((argc > 2) ? atoi(argv[2]) : 10);
+    }
 
     for (i = 0; ; i++) {
         h = OpenInterface(i, path, sizeof(path));

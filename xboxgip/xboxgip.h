@@ -35,9 +35,37 @@
 #define XGIP_XPAD_MODE 0
 #endif
 
+/*
+ * What games see:
+ *   1 = Xbox 360 controller, as Microsoft's XP driver presents it: USB ID
+ *       045E:028E, DirectInput name "XBOX 360 For Windows (Controller)"
+ *       (XP's wording; Vista and later say "Controller (XBOX 360 For Windows)"),
+ *       10 buttons, D-pad hat, 5 axes with both triggers sharing Z. Games of
+ *       the 2005-2010 era recognize this layout and name.
+ *   0 = native layout: the pad's own ID, 12 buttons (incl. Xbox and Share)
+ *       and each trigger on its own axis.
+ * Rumble output report 2 (used by rumbletest) exists in both. build.cmd
+ * builds both: native in x86/amd64 (+ -chk), 360 in x86-x360/amd64-x360.
+ */
+#ifndef XGIP_X360_MODE
+#define XGIP_X360_MODE 0
+#endif
+
+#define XGIP_X360_PID           0x028E
+#define XGIP_X360_BCD           0x0114
+/* XP name; games of the era ship configs for it, e.g. The Godfather's default.ini
+   has [XBOX_360_For_Windows_(Controller):10:1:5]. */
+#define XGIP_X360_PRODUCT       L"XBOX 360 For Windows (Controller)"
+#define XGIP_NATIVE_PRODUCT     L"Xbox Controller (GIP)"
+
 /* Release number from build.cmd (releases\rNN); 0 for a manual build. */
 #ifndef XGIP_REVISION
 #define XGIP_REVISION 0
+#endif
+
+/* Beta number for internal test builds (releases\rNN-betaK); 0 for a release. */
+#ifndef XGIP_BETA
+#define XGIP_BETA 0
 #endif
 
 /* ------------------------------------------------------------------------- */
@@ -69,6 +97,18 @@
 /* Resend the init sequence this often until the pad sends something. */
 #define XGIP_INIT_RETRY_MS     1000
 #define XGIP_INIT_MAX_ATTEMPTS 10
+
+/*
+ * Experimental keep-alive while the pad is on: power-on and auth-done resent
+ * every XGIP_KEEPALIVE_MS. Left idle on XP, the pad switches itself off after
+ * a while. Off by default until tested; a Windows 11 trace shows Windows
+ * instead sends a 9-byte request every ~5 s (answered with 17 bytes), whose
+ * contents aren't known yet.
+ */
+#ifndef XGIP_KEEPALIVE
+#define XGIP_KEEPALIVE 0
+#endif
+#define XGIP_KEEPALIVE_MS      30000
 
 /* ------------------------------------------------------------------------- */
 /* Normalized controller state. Laid out like XINPUT_GAMEPAD so the XInput   */
@@ -112,6 +152,18 @@ typedef struct _XGIP_STATE {
 #define XGIP_REPORT_ID_RUMBLE 2
 
 #include <pshpack1.h>
+#if XGIP_X360_MODE
+typedef struct _XGIP_HID_INPUT_REPORT {
+    UCHAR  ReportId;
+    USHORT X;                   /* left stick, 0..65535, down-positive */
+    USHORT Y;
+    USHORT Z;                   /* triggers: 32768 at rest, LT toward 65535, RT toward 0 */
+    USHORT Rx;                  /* right stick */
+    USHORT Ry;
+    UCHAR  Hat;                 /* low nibble: 1..8 clockwise from up, 0 = centered */
+    USHORT Buttons;             /* bits 0..9 */
+} XGIP_HID_INPUT_REPORT, *PXGIP_HID_INPUT_REPORT;
+#else
 typedef struct _XGIP_HID_INPUT_REPORT {
     UCHAR  ReportId;
     USHORT X;                   /* left stick, 0..65535, down-positive */
@@ -123,6 +175,7 @@ typedef struct _XGIP_HID_INPUT_REPORT {
     UCHAR  Hat;                 /* low nibble: 1..8 clockwise from up, 0 = centered */
     USHORT Buttons;             /* bits 0..11 */
 } XGIP_HID_INPUT_REPORT, *PXGIP_HID_INPUT_REPORT;
+#endif
 
 typedef struct _XGIP_HID_RUMBLE_REPORT {
     UCHAR ReportId;
@@ -158,6 +211,7 @@ typedef struct _DEVICE_CONTEXT {
 
     /* Init sequence: sent one packet at a time, retried until the pad answers. */
     WDFTIMER              InitTimer;
+    WDFTIMER              KeepAliveTimer;
     LONG                  InitActive;    /* a sequence is in flight */
     LONG                  InitRestart;   /* announce arrived mid-sequence: run it again */
     ULONG                 InitStep;      /* next entry in the init table */
@@ -195,6 +249,7 @@ XgipUsbWrite(
 
 /* gip.c */
 EVT_WDF_TIMER XgipEvtInitTimer;
+EVT_WDF_TIMER XgipEvtKeepAliveTimer;
 
 VOID
 GipStartInit(
@@ -229,6 +284,13 @@ VOID
 XgipHidCompletePendingRead(
     PDEVICE_CONTEXT Context
     );
+
+#if XGIP_X360_MODE
+VOID
+XgipRegisterX360Name(
+    VOID
+    );
+#endif
 
 /* xinput.c */
 EVT_WDF_IO_QUEUE_IO_DEVICE_CONTROL XgipEvtXusbDeviceControl;

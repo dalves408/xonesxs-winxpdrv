@@ -17,8 +17,10 @@ Microsoft never released Xbox One controller support for XP. This driver adds it
 | Driver install and load | ✅ Works |
 | Buttons, sticks, triggers, D-pad in Game Controllers | ✅ Works |
 | Powering on by itself when plugged in | ⚠️ No: on XP, **press the Xbox button once after plugging in** (see below) |
+| Staying on when idle | ⚠️ No: after a while idle, the controller switches off and searches for its console. Unplug and replug to bring it back. A keep-alive is being worked on. |
 | XInput interface | ✅ Works: buttons, triggers and rumble tested with `rumbletest` (not yet with a real XInput game) |
 | Rumble | ✅ All four motors (both grips and both triggers) tested with `rumbletest`, through both the HID and the XInput route |
+| Games | ✅ The Godfather: The Game (2006), with the Xbox 360 package (`x86-x360`): recognized through the game's own built-in Xbox 360 config, no ini edits |
 | Xbox Wireless Adapter / Bluetooth | ❌ Not supported (wired USB only) |
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release and what was found along the way.
@@ -40,7 +42,15 @@ All of these use the same GIP protocol over USB. Only the Series X|S pad has bee
 
 You'll need **Windows XP SP2 or later** (the KMDF 1.9 runtime requires it) and a **data** USB cable, not a charge-only one.
 
-1. Download the newest release from the [Releases page](https://github.com/dalves408/xonesxs-winxpdrv/releases), or [build it yourself](#building). Copy the `x86` folder to the XP PC (`amd64` for XP x64). The `-chk` zips are debug builds that log to DebugView.
+1. Download the newest release from the [Releases page](https://github.com/dalves408/xonesxs-winxpdrv/releases), or [build it yourself](#building), and pick one package:
+
+   | Package | Use it for |
+   |---|---|
+   | **`x86-x360`** / `amd64-x360` | **Most games from the XP era.** The controller appears to games as an official Xbox 360 controller ("XBOX 360 For Windows (Controller)"), which many games recognize out of the box. |
+   | `x86` / `amd64` | The controller's native layout: 12 buttons including Xbox and Share, and each trigger on its own axis. Better for games that let you map any controller freely. |
+   | `x86-chk` / `amd64-chk` | Native layout plus logging to DebugView, for troubleshooting. |
+
+   Use the `amd64` versions on XP Professional x64. Copy the package folder to the XP PC.
 2. Plug in the controller. In the **Found New Hardware** wizard, choose **Install from a list or specific location** and point it at the folder.
    If XP already installed it as an unknown device, use Device Manager → right-click → **Update Driver** → **Don't search, I will choose** → **Have Disk**.
 3. Accept the "has not passed Windows Logo testing" warning. XP doesn't require signed drivers on either x86 or x64.
@@ -57,14 +67,16 @@ For XInput games, install the **DirectX 9.0c (June 2010) runtime**, which provid
 
 ### DirectInput (HID)
 
-| HID | Controller |
-|---|---|
-| X / Y | Left stick |
-| Rx / Ry | Right stick |
-| Z / Rz | Left / right trigger (separate axes, 0–1023) |
-| Hat switch | D-pad |
-| Buttons 1–12 | A, B, X, Y, LB, RB, View, Menu, LS, RS, Xbox (Guide), Share |
-| Output report 2 | Rumble: left, right, left trigger, right trigger (0–100 each) |
+| HID | Native packages | Xbox 360 packages (`-x360`) |
+|---|---|---|
+| Name / USB ID | "Xbox Controller (GIP)", the pad's own ID | "XBOX 360 For Windows (Controller)", `045E:028E` |
+| X / Y | Left stick | Left stick |
+| Rx / Ry | Right stick | Right stick |
+| Z | Left trigger (0–1023) | Both triggers: centered at rest, LT up, RT down |
+| Rz | Right trigger (0–1023) | – |
+| Hat switch | D-pad | D-pad |
+| Buttons | 1–12: A, B, X, Y, LB, RB, View, Menu, LS, RS, Xbox, Share | 1–10: A, B, X, Y, LB, RB, Back, Start, LS, RS |
+| Output report 2 | Rumble: left, right, left trigger, right trigger (0–100 each) | Same |
 
 ### XInput
 
@@ -124,16 +136,24 @@ Then run:
 build.cmd
 ```
 
-Each run creates the next numbered release folder, which is never overwritten:
+for an internal test build, or
 
-```
-releases\rNN\x86\        XP 32-bit
-releases\rNN\x86-chk\    XP 32-bit, debug build with logging
-releases\rNN\amd64\      XP x64
-releases\rNN\amd64-chk\  XP x64, debug build with logging
+```bat
+build.cmd release
 ```
 
-Each folder contains `xboxgip.inf`, `xboxgip.sys`, `xgiphid.sys`, `WdfCoInstaller01009.dll`, `xusbtest.exe` and symbols (`.pdb`). The revision number is compiled into the driver and stamped into the INF version (`0.1.NN.0`).
+for a release. Test builds are numbered as betas of the next release (`releases\r09-beta1`, `r09-beta2`, …). The release goes to `releases\r09` and removes that release's beta folders. Nothing is ever overwritten. Each build contains six packages:
+
+```
+x86\         XP 32-bit
+x86-chk\     XP 32-bit, debug build with logging
+amd64\       XP x64
+amd64-chk\   XP x64, debug build with logging
+x86-x360\    XP 32-bit, presented to games as an Xbox 360 controller
+amd64-x360\  XP x64, presented to games as an Xbox 360 controller
+```
+
+Each package contains `xboxgip.inf`, `xboxgip.sys`, `xgiphid.sys`, `WdfCoInstaller01009.dll`, `xusbtest.exe`, `rumbletest.exe`, `LICENSE` and symbols (`.pdb`). The version is compiled into the driver: the debug log's first line says `revision 9 beta 2`, for example. It's also stamped into the INF: `0.1.9.2` for betas and `0.1.9.100` for the release, so a release always outranks its betas.
 
 The project path may contain spaces: `build.cmd` maps it to a drive letter for the duration of the build, because WDK 7.1's `build.exe` can't handle spaces.
 
@@ -171,6 +191,7 @@ xusbtest rumble     :: run both motors for one second
 
 - [ ] Automatic power-on on XP (every known Windows/Linux host request tried; see CHANGELOG r08)
 - [ ] Test older pads (One, One S, Elite) with the optional xpad startup (`XGIP_XPAD_MODE`)
+- [ ] Bluetooth: waiting on test hardware. Series X|S pads (and One S on current firmware) use Bluetooth Low Energy, which XP's built-in Bluetooth stack doesn't support, so this likely needs a third-party stack
 - [ ] Confirm XInput input and rumble with a real game on XP
 - [ ] Confirm the Share button position on the Series X|S pad
 - [ ] Elite Series 2 paddles

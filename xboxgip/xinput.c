@@ -204,7 +204,11 @@ XusbGetInformation(
     info->DeviceCount = 1;
     info->Unknown1 = 1;
     info->VendorId = Context->DeviceDescriptor.idVendor;
+#if XGIP_X360_MODE
+    info->ProductId = XGIP_X360_PID;    /* wired Xbox 360 controller */
+#else
     info->ProductId = Context->DeviceDescriptor.idProduct;
+#endif
 
     *Information = sizeof(*info);
     return STATUS_SUCCESS;

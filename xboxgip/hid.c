@@ -7,6 +7,77 @@
  */
 #include "xboxgip.h"
 
+#if XGIP_X360_MODE
+/*
+ * Xbox 360 controller layout, as Microsoft's XP driver presents it to
+ * DirectInput: sticks on X/Y and Rx/Ry, both triggers sharing Z, a hat,
+ * and 10 buttons. DirectInput orders axes by usage: X, Y, Z, Rx, Ry.
+ */
+static const UCHAR XgipReportDescriptor[] = {
+    0x05, 0x01,                     /* Usage Page (Generic Desktop) */
+    0x09, 0x05,                     /* Usage (Game Pad) */
+    0xA1, 0x01,                     /* Collection (Application) */
+    0x85, XGIP_REPORT_ID_INPUT,     /*   Report ID (1) */
+
+    0x09, 0x01,                     /*   Usage (Pointer) */
+    0xA1, 0x00,                     /*   Collection (Physical) - left stick */
+    0x09, 0x30,                     /*     Usage (X) */
+    0x09, 0x31,                     /*     Usage (Y) */
+    0x15, 0x00,                     /*     Logical Minimum (0) */
+    0x27, 0xFF, 0xFF, 0x00, 0x00,   /*     Logical Maximum (65535) */
+    0x75, 0x10,                     /*     Report Size (16) */
+    0x95, 0x02,                     /*     Report Count (2) */
+    0x81, 0x02,                     /*     Input (Data,Var,Abs) */
+    0xC0,                           /*   End Collection */
+
+    0x09, 0x32,                     /*   Usage (Z) - both triggers */
+    0x95, 0x01,                     /*   Report Count (1) */
+    0x81, 0x02,                     /*   Input (Data,Var,Abs) */
+
+    0x09, 0x01,                     /*   Usage (Pointer) */
+    0xA1, 0x00,                     /*   Collection (Physical) - right stick */
+    0x09, 0x33,                     /*     Usage (Rx) */
+    0x09, 0x34,                     /*     Usage (Ry) */
+    0x95, 0x02,                     /*     Report Count (2) */
+    0x81, 0x02,                     /*     Input (Data,Var,Abs) */
+    0xC0,                           /*   End Collection */
+
+    0x09, 0x39,                     /*   Usage (Hat switch) */
+    0x15, 0x01,                     /*   Logical Minimum (1) */
+    0x25, 0x08,                     /*   Logical Maximum (8) */
+    0x35, 0x00,                     /*   Physical Minimum (0) */
+    0x46, 0x3B, 0x01,               /*   Physical Maximum (315) */
+    0x65, 0x14,                     /*   Unit (Degrees) */
+    0x75, 0x04,                     /*   Report Size (4) */
+    0x95, 0x01,                     /*   Report Count (1) */
+    0x81, 0x42,                     /*   Input (Data,Var,Abs,Null) */
+    0x65, 0x00,                     /*   Unit (None) */
+    0x45, 0x00,                     /*   Physical Maximum (0) - reset */
+    0x81, 0x03,                     /*   Input (Const) - 4 bit pad */
+
+    0x05, 0x09,                     /*   Usage Page (Button) */
+    0x19, 0x01,                     /*   Usage Minimum (1) */
+    0x29, 0x0A,                     /*   Usage Maximum (10) */
+    0x15, 0x00,                     /*   Logical Minimum (0) */
+    0x25, 0x01,                     /*   Logical Maximum (1) */
+    0x75, 0x01,                     /*   Report Size (1) */
+    0x95, 0x0A,                     /*   Report Count (10) */
+    0x81, 0x02,                     /*   Input (Data,Var,Abs) */
+    0x75, 0x06,                     /*   Report Size (6) */
+    0x95, 0x01,                     /*   Report Count (1) */
+    0x81, 0x03,                     /*   Input (Const) - pad */
+
+    0x06, 0x00, 0xFF,               /*   Usage Page (Vendor 0xFF00) */
+    0x85, XGIP_REPORT_ID_RUMBLE,    /*   Report ID (2) */
+    0x09, 0x01,                     /*   Usage (1) - rumble */
+    0x15, 0x00,                     /*   Logical Minimum (0) */
+    0x25, 0x64,                     /*   Logical Maximum (100) */
+    0x75, 0x08,                     /*   Report Size (8) */
+    0x95, 0x04,                     /*   Report Count (4) */
+    0x91, 0x02,                     /*   Output (Data,Var,Abs) */
+    0xC0                            /* End Collection */
+};
+#else
 static const UCHAR XgipReportDescriptor[] = {
     0x05, 0x01,                     /* Usage Page (Generic Desktop) */
     0x09, 0x05,                     /* Usage (Game Pad) */
@@ -71,6 +142,7 @@ static const UCHAR XgipReportDescriptor[] = {
     0x91, 0x02,                     /*   Output (Data,Var,Abs) */
     0xC0                            /* End Collection */
 };
+#endif
 
 static const HID_DESCRIPTOR XgipHidDescriptor = {
     sizeof(HID_DESCRIPTOR),
@@ -97,12 +169,14 @@ static const USHORT XgipHidButtonMap[] = {
     XGIP_BTN_Y,
     XGIP_BTN_LSHOULDER,
     XGIP_BTN_RSHOULDER,
-    XGIP_BTN_BACK,                  /* View */
-    XGIP_BTN_START,                 /* Menu */
+    XGIP_BTN_BACK,                  /* View (360: Back) */
+    XGIP_BTN_START,                 /* Menu (360: Start) */
     XGIP_BTN_LTHUMB,
     XGIP_BTN_RTHUMB,
-    XGIP_BTN_GUIDE
-};                                  /* button 12 is Share, handled separately */
+#if !XGIP_X360_MODE
+    XGIP_BTN_GUIDE                  /* the 360 layout has no Guide button */
+#endif
+};                                  /* native button 12 is Share, handled separately */
 
 static VOID
 XgipBuildInputReport(
@@ -120,8 +194,13 @@ XgipBuildInputReport(
     Report->Y  = (USHORT)(32767 - (LONG)State->ThumbLY);
     Report->Rx = (USHORT)((LONG)State->ThumbRX + 32768);
     Report->Ry = (USHORT)(32767 - (LONG)State->ThumbRY);
+#if XGIP_X360_MODE
+    /* Like the 360 pad: centered at rest, LT pushes up, RT pushes down. */
+    Report->Z  = (USHORT)(32768 + (LONG)State->LeftTrigger * 128 - (LONG)State->RightTrigger * 128);
+#else
     Report->Z  = State->LeftTriggerRaw;
     Report->Rz = State->RightTriggerRaw;
+#endif
 
     Report->Hat = XgipHatTable[State->Buttons & 0x000F];
 
@@ -130,11 +209,49 @@ XgipBuildInputReport(
             buttons |= (USHORT)(1 << i);
         }
     }
+#if !XGIP_X360_MODE
     if (State->Share) {
         buttons |= (USHORT)(1 << 11);
     }
+#endif
     Report->Buttons = buttons;
 }
+
+#if XGIP_X360_MODE
+#ifdef ALLOC_PRAGMA
+#pragma alloc_text(PAGE, XgipRegisterX360Name)
+#endif
+
+/*
+ * DirectInput takes a joystick's name from this key. The INF sets it at
+ * install, but XP writes its own value when it installs the game-controller
+ * child, so set it again on every start: games that look for the Xbox 360
+ * pad by name ("XBOX 360 For Windows (Controller)" on XP) then find it.
+ */
+VOID
+XgipRegisterX360Name(
+    VOID
+    )
+{
+    DECLARE_CONST_UNICODE_STRING(keyPath,
+        L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Control\\MediaProperties"
+        L"\\PrivateProperties\\Joystick\\OEM\\VID_045E&PID_028E");
+    DECLARE_CONST_UNICODE_STRING(valueName, L"OEMName");
+    DECLARE_CONST_UNICODE_STRING(name, XGIP_X360_PRODUCT);
+    WDFKEY key;
+    NTSTATUS status;
+
+    PAGED_CODE();
+
+    status = WdfRegistryCreateKey(NULL, &keyPath, KEY_SET_VALUE, REG_OPTION_NON_VOLATILE,
+                                  NULL, WDF_NO_OBJECT_ATTRIBUTES, &key);
+    if (NT_SUCCESS(status)) {
+        status = WdfRegistryAssignUnicodeString(key, &valueName, &name);
+        WdfRegistryClose(key);
+    }
+    KdPrint(("xboxgip: DirectInput name for 045E:028E: 0x%08X\n", status));
+}
+#endif
 
 static NTSTATUS
 XgipCopyToIrpBuffer(
@@ -270,7 +387,11 @@ XgipHidGetString(
         string = L"Microsoft";
         break;
     case HID_STRING_ID_IPRODUCT:
-        string = L"Xbox Controller (GIP)";
+#if XGIP_X360_MODE
+        string = XGIP_X360_PRODUCT;
+#else
+        string = XGIP_NATIVE_PRODUCT;
+#endif
         break;
     default:
         return STATUS_INVALID_PARAMETER;
@@ -313,8 +434,14 @@ XgipEvtInternalDeviceControl(
         RtlZeroMemory(&attributes, sizeof(attributes));
         attributes.Size = sizeof(attributes);
         attributes.VendorID = context->DeviceDescriptor.idVendor;
+#if XGIP_X360_MODE
+        /* Wired Xbox 360 controller: games and DirectInput key on 045E:028E. */
+        attributes.ProductID = XGIP_X360_PID;
+        attributes.VersionNumber = XGIP_X360_BCD;
+#else
         attributes.ProductID = context->DeviceDescriptor.idProduct;
         attributes.VersionNumber = context->DeviceDescriptor.bcdDevice;
+#endif
         status = XgipCopyToIrpBuffer(irp, OutputBufferLength, &attributes,
                                      sizeof(attributes), &information);
         break;
