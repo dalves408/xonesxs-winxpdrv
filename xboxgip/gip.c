@@ -53,7 +53,10 @@ static const GIP_INIT_PACKET GipInitPackets[] = {
     { 0,      GipAuthDone,   sizeof(GipAuthDone) },     /* what Windows sends after auth */
 };
 
-/* Sequence numbers run 1..255 and never 0, as in xone ("always greater than zero"). */
+/*
+ * Windows mode: sequence numbers run 1..255 and never 0, as in xone
+ * ("always greater than zero"). xpad mode: numbered from 0, as xpad does.
+ */
 static UCHAR
 GipNextSequence(
     PDEVICE_CONTEXT Context
@@ -61,9 +64,13 @@ GipNextSequence(
 {
     LONG sequence;
 
+#if XGIP_XPAD_MODE
+    sequence = (InterlockedIncrement(&Context->Sequence) - 1) & 0xFF;
+#else
     do {
         sequence = InterlockedIncrement(&Context->Sequence) & 0xFF;
     } while (sequence == 0);
+#endif
 
     return (UCHAR)sequence;
 }

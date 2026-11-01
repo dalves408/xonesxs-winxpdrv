@@ -15,10 +15,10 @@ Microsoft never released Xbox One controller support for XP. This driver adds it
 |---|---|
 | Tested hardware | Xbox Series X\|S controller (`045E:0B12`, firmware 5.17) on a real XP SP3 laptop (Intel USB 2.0) |
 | Driver install and load | ✅ Works |
-| Buttons, sticks, triggers, D-pad in Game Controllers | ✅ Works (r05) once the pad is switched on with the Xbox button |
-| Powering on by itself when plugged in | 🧪 r06 adds Windows' identify handshake for this; not yet tested on hardware |
-| XInput interface | ✅ Detected by `xusbtest`; input and rumble through XInput not yet tested on hardware |
-| Rumble | 🧪 Implemented; not yet tested on hardware |
+| Buttons, sticks, triggers, D-pad in Game Controllers | ✅ Works |
+| Powering on by itself when plugged in | ⚠️ No: on XP, **press the Xbox button once after plugging in** (see below) |
+| XInput interface | ✅ Works: buttons, triggers and rumble tested with `rumbletest` (not yet with a real XInput game) |
+| Rumble | ✅ All four motors (both grips and both triggers) tested with `rumbletest`, through both the HID and the XInput route |
 | Xbox Wireless Adapter / Bluetooth | ❌ Not supported (wired USB only) |
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each release and what was found along the way.
@@ -44,7 +44,10 @@ You'll need **Windows XP SP2 or later** (the KMDF 1.9 runtime requires it) and a
 2. Plug in the controller. In the **Found New Hardware** wizard, choose **Install from a list or specific location** and point it at the folder.
    If XP already installed it as an unknown device, use Device Manager → right-click → **Update Driver** → **Don't search, I will choose** → **Have Disk**.
 3. Accept the "has not passed Windows Logo testing" warning. XP doesn't require signed drivers on either x86 or x64.
-4. Open **Control Panel → Game Controllers**. "Xbox Series X|S Controller (GIP)" should be listed. Use **Properties** to test it.
+4. **Press the Xbox button** on the controller. It lights up, and the driver finishes the startup automatically.
+5. Open **Control Panel → Game Controllers**. "Xbox Series X|S Controller (GIP)" should be listed. Use **Properties** to test it.
+
+> **Press the Xbox button after every plug-in.** On XP the controller doesn't switch itself on when it's plugged in, as it does on Windows 10/11; it waits for its Xbox button. Every startup request that Windows 11 and the Linux drivers send has been reproduced on XP without changing this, so it's likely down to the USB hardware rather than the driver. Details are in the [CHANGELOG](CHANGELOG.md).
 
 For XInput games, install the **DirectX 9.0c (June 2010) runtime**, which provides `xinput1_3.dll`.
 
@@ -83,7 +86,7 @@ Standard `XINPUT_GAMEPAD` layout. The Guide button comes through `XInputGetState
 
 * **`xgiphid.sys`** (`xgiphid/`) is a tiny WDM HID minidriver shim. `hidclass.sys` takes over a minidriver's dispatch table, which a KMDF driver can't allow, so this shim registers with hidclass and passes every IRP down. Windows 7 ships `mshidkmdf.sys` for this job; XP doesn't.
 * **`xboxgip.sys`** (`xboxgip/`) is a KMDF 1.9 lower filter that does the real work:
-  * `usb.c`: selects the configuration, then **switches interface 0 to alternate setting 1** (as Windows does; on setting 0 the pad stays silent). It finds the interrupt pipes, runs a continuous reader and sends packets asynchronously.
+  * `usb.c`: repeats Windows 11's USB setup: the Microsoft OS descriptor queries, **interface 0 on alternate setting 1** (2 ms input polling), SET_INTERFACE for the other interfaces, then a port reset and a second round of setup. It finds the interrupt pipes, runs a continuous reader and sends packets asynchronously.
   * `gip.c`: the GIP protocol. It handles announce → identify (chunked, ACKed) → power-on, LED and auth-done, then parses input and sends rumble. Startup follows what Windows sends on the wire and the [xone](https://github.com/medusalix/xone) driver; packet layouts follow Linux [xpad](https://github.com/torvalds/linux/blob/master/drivers/input/joystick/xpad.c).
   * `hid.c`: the HID report descriptor and the `IOCTL_HID_*` handlers.
   * `xinput.c`: creates a raw child device that registers the XUSB interface `{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}` and answers the IOCTLs that Microsoft's Xbox 360 driver would. The INF installs it with a null driver, so it needs no extra setup.
@@ -145,7 +148,7 @@ xusbtest state10    :: force the XUSB 1.0 request format
 xusbtest rumble     :: run both motors for one second
 ```
 
-**`rumbletest`** (in every release folder) is an interactive test of all four rumble motors. Hold a button to pick a motor, and pull either trigger to set the strength:
+**`rumbletest`** (in every release folder) is an interactive test of all four rumble motors. Hold a button to pick a motor; it runs at full strength. Pull either trigger to turn it down; fully pulled is off:
 
 | Button | Motor |
 |---|---|
@@ -166,7 +169,8 @@ xusbtest rumble     :: run both motors for one second
 
 ## Roadmap
 
-- [ ] Confirm automatic power-on (r06) on hardware
+- [ ] Automatic power-on on XP (every known Windows/Linux host request tried; see CHANGELOG r08)
+- [ ] Test older pads (One, One S, Elite) with the optional xpad startup (`XGIP_XPAD_MODE`)
 - [ ] Confirm XInput input and rumble with a real game on XP
 - [ ] Confirm the Share button position on the Series X|S pad
 - [ ] Elite Series 2 paddles

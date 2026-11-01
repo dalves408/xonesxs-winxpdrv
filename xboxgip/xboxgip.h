@@ -19,6 +19,22 @@
 
 #define XGIP_POOL_TAG 'piGX'
 
+/*
+ * Startup style:
+ *   0 = Windows: interface 0 on alternate setting 1, OS-descriptor queries,
+ *       port reset and reconfigure, wait for the pad's announce.
+ *   1 = Linux xpad: interface 0 left on setting 0, SET_INTERFACE for the
+ *       other interfaces, then power-on/LED/auth-done straight away,
+ *       numbered from 0, retried until input arrives.
+ * Both answer an announce with the full identify handshake. Windows mode is
+ * the default: setting 1 polls input every 2 ms instead of 4 ms, and it's the
+ * mode tested end to end. On XP neither makes a Series X|S pad power on by
+ * itself; it needs its Xbox button pressed once after plugging in.
+ */
+#ifndef XGIP_XPAD_MODE
+#define XGIP_XPAD_MODE 0
+#endif
+
 /* Release number from build.cmd (releases\rNN); 0 for a manual build. */
 #ifndef XGIP_REVISION
 #define XGIP_REVISION 0

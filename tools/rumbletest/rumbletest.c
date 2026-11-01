@@ -3,7 +3,8 @@
 /*
  * rumbletest - interactive test of the controller's four rumble motors.
  *
- * Hold a button to pick a motor; pull either trigger to set its strength:
+ * Hold a button to pick a motor. It runs at full strength; pull either
+ * trigger to turn it down (fully pulled = off):
  *
  *   A     left motor (heavy, low frequency)
  *   B     right motor (light, high frequency)
@@ -271,7 +272,8 @@ PrintHelp(
     )
 {
     printf("rumbletest - Xbox controller rumble test\n\n");
-    printf("  Hold a button, and pull either trigger to set the strength:\n");
+    printf("  Hold a button: it runs at full strength. Pull either trigger to turn it\n");
+    printf("  down (fully pulled = off):\n");
     printf("    A     left motor (heavy, low frequency)\n");
     printf("    B     right motor (light, high frequency)\n");
     printf("    X     left trigger motor\n");
@@ -300,6 +302,7 @@ main(
     WORD previousButtons = 0;
     BYTE lt = 0;
     BYTE rt = 0;
+    BYTE pull;
     BYTE strength;
     DWORD lastSend = 0;
     BOOL connected = TRUE;
@@ -355,11 +358,16 @@ main(
         }
         previousButtons = buttons;
 
-        /* Strength: the further-pulled trigger, 0..100 %, with a small deadzone. */
-        strength = (BYTE)(((lt > rt) ? lt : rt) * 100 / 255);
-        if (strength < TRIGGER_DEADZONE) {
-            strength = 0;
+        /*
+         * Strength: full power at rest, turned down by pulling either trigger
+         * (the further-pulled one wins); fully pulled is 0 %. The deadzone at
+         * the resting end keeps a slightly loose trigger at a clean 100 %.
+         */
+        pull = (BYTE)(((lt > rt) ? lt : rt) * 100 / 255);
+        if (pull < TRIGGER_DEADZONE) {
+            pull = 0;
         }
+        strength = (BYTE)(100 - pull);
 
         memset(&motors, 0, sizeof(motors));
         if (buttons & BTN_A) motors.Left = strength;
