@@ -145,6 +145,19 @@ xusbtest state10    :: force the XUSB 1.0 request format
 xusbtest rumble     :: run both motors for one second
 ```
 
+**`rumbletest`** (in every release folder) is an interactive test of all four rumble motors. Hold a button to pick a motor, and pull either trigger to set the strength:
+
+| Button | Motor |
+|---|---|
+| A | Left grip motor (heavy, low frequency) |
+| B | Right grip motor (light, high frequency) |
+| X | Left trigger impulse motor |
+| Y | Right trigger impulse motor |
+| LB | All four |
+| RB | Both grip motors, pulsing on and off |
+| View | Switch route: HID output report (all four motors) ↔ XInput (grip motors only) |
+| Menu | Quit |
+
 **Driver logs:** the `-chk` builds log every step: USB setup, every GIP packet sent (`->`) and received (`<-`), the startup handshake, and the XInput requests. On XP you can read them with **Sysinternals DebugView 4.81** (the last version that runs on XP) with *Capture → Capture Kernel* enabled. No debugger cable is needed. The first line shows the running revision: `xboxgip: revision NN`.
 
 **Kernel debugging:** add `/debug /debugport=COM1 /baudrate=115200` to `boot.ini`, connect a null-modem cable, and run `windbg -k com:port=COMx,baud=115200` on another PC.

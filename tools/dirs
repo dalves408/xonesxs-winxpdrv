@@ -1,2 +1,3 @@
 DIRS= \
-    xusbtest
+    xusbtest \
+    rumbletest

@@ -11,6 +11,21 @@ Each release is built into its own folder, `releases\rNN\`, and is never overwri
 
 The debug build's first log line is `xboxgip: revision N`. The INF version is `0.1.N.0`.
 
+## r07 (2026-11-01): rumble test tool
+
+The driver is unchanged from r06.
+
+* New **`rumbletest.exe`**: an interactive test of all four rumble motors. Hold a button to pick a motor and pull either trigger to set the strength:
+  * **A:** left (heavy) motor
+  * **B:** right (light) motor
+  * **X:** left trigger motor
+  * **Y:** right trigger motor
+  * **LB:** all four
+  * **RB:** main motors pulsing
+  * **View:** switch between the HID route (all four motors) and the XInput route (main motors only)
+  * **Menu:** quit
+* `LICENSE` (GPL-2.0-only) is now included in every release folder.
+
 ## r06 (2026-11-01): power on by itself, Windows-style startup
 
 r05 on XP: the pad worked (buttons and sticks correct) but only after pressing the Xbox button. Windows 11 powers it on automatically.

@@ -1,0 +1,11 @@
+TARGETNAME=rumbletest
+TARGETTYPE=PROGRAM
+UMTYPE=console
+UMENTRY=main
+USE_MSVCRT=1
+
+MSC_WARNING_LEVEL=/W4
+
+TARGETLIBS=$(SDK_LIB_PATH)\setupapi.lib $(SDK_LIB_PATH)\hid.lib
+
+SOURCES=rumbletest.c

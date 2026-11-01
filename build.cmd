@@ -4,8 +4,8 @@ rem   releases\rNN\x86         XP x86 release
 rem   releases\rNN\x86-chk     XP x86 debug (KdPrint logging for DebugView)
 rem   releases\rNN\amd64       XP x64 release
 rem   releases\rNN\amd64-chk   XP x64 debug
-rem Each folder has the INF, both drivers, the KMDF co-installer, xusbtest.exe
-rem and symbols. NN is one more than the highest existing release; set
+rem Each folder has the INF, both drivers, the KMDF co-installer, the
+rem xusbtest.exe and rumbletest.exe tools, LICENSE and symbols. NN is one more than the highest existing release; set
 rem XGIP_REVISION to force a number. The revision is compiled into the driver
 rem (first debug log line) and stamped into the INF DriverVer.
 rem
@@ -79,11 +79,13 @@ for %%D in (xboxgip xgiphid) do (
         set FAIL=1
     )
 )
-if exist "%ROOT%\tools\xusbtest\%3\%2\xusbtest.exe" (
-    copy /y "%ROOT%\tools\xusbtest\%3\%2\xusbtest.exe" "%OUT%\" >nul
-) else (
-    echo missing tools\xusbtest\%3\%2\xusbtest.exe
-    set FAIL=1
+for %%T in (xusbtest rumbletest) do (
+    if exist "%ROOT%\tools\%%T\%3\%2\%%T.exe" (
+        copy /y "%ROOT%\tools\%%T\%3\%2\%%T.exe" "%OUT%\" >nul
+    ) else (
+        echo missing tools\%%T\%3\%2\%%T.exe
+        set FAIL=1
+    )
 )
 rem Stamp today's date and the revision into DriverVer (0.1.<rev>.0).
 powershell -NoProfile -Command "(Get-Content '%ROOT%\inf\xboxgip.inf') -replace '^DriverVer\s*=.*$', ('DriverVer   = ' + (Get-Date -Format 'MM/dd/yyyy') + ',0.1.%XGIP_REVISION%.0') | Set-Content -Encoding ASCII '%OUT%\xboxgip.inf'" || set FAIL=1
