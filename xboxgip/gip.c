@@ -449,7 +449,11 @@ GipDispatch(
     case GIP_CMD_ANNOUNCE:
         /* First thing the pad sends; it waits to be identified and powered on. */
         KdPrint(("xboxgip: announce\n"));
+#if XGIP_XPAD_MODE
+        GipStartInit(Context);
+#else
         GipSendIdentifyRequest(Context);
+#endif
         break;
 
     case GIP_CMD_IDENTIFY:

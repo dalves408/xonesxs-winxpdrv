@@ -379,8 +379,9 @@ XgipEvtPrepareHardware(
     }
 #endif
 
-    /* Windows and xpad both send SET_INTERFACE for the audio interface. */
+#if !XGIP_XPAD_MODE
     XgipResetOtherInterfaces(context);
+#endif
 
     pipeCount = WdfUsbInterfaceGetNumConfiguredPipes(gipInterface);
 
@@ -468,11 +469,12 @@ XgipEvtD0Entry(
 
 #if XGIP_XPAD_MODE
     /*
-     * Like xpad: power on straight away, without waiting for an announce,
-     * and resend every second until input arrives.
+     * The order a usbmon capture of xpad shows: IN read already started above,
+     * then SET_INTERFACE(1, 0), then the init packets, sent once. A failed
+     * SET_INTERFACE doesn't stop xpad's startup either.
      */
+    XgipSetInterfaceRaw(context, 1, 0);
     GipStartInit(context);
-    WdfTimerStart(context->InitTimer, WDF_REL_TIMEOUT_IN_MS(XGIP_INIT_RETRY_MS));
 #else
     /*
      * Like Windows, send nothing until the pad announces itself; the announce

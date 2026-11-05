@@ -13,6 +13,50 @@ Internal test builds go to `releases\rNN-betaK\` (`build.cmd`); the release goes
 
 The debug build's first log line is `xboxgip: revision N beta K` (or `revision N` for a release). The INF version is `0.1.N.K` for betas and `0.1.N.100` for releases. Releases up to r08 used `0.1.N.0`.
 
+## r10 (2026-11-05): automatic power-on and no idle shutdown through a USB hub
+
+**Connect the controller through a powered USB hub and it now switches itself on under XP, with no button press.** A direct connection to the tested laptop still needs the Xbox button.
+
+### Hardware-tested on XP (r10 beta 1, same driver source)
+
+HP Pavilion dv7, Intel ICH9, XP SP3, powered VIA VL812 USB 3 hub, native `chk` package:
+
+| | Direct to the laptop | Through the powered hub |
+|---|---|---|
+| Powers on when plugged in | No, press the Xbox button | **Yes** |
+| First input after the startup packets | Only after the button | About 6 ms |
+| Sticks, triggers, buttons, rumble | Work after the button | Work, without a button press |
+| Idle | Shuts off, then searches for its console | **No shutdown in about 2.5 hours idle** |
+
+The `x86-x360` and `amd64` packages weren't retested with this startup, and neither was The Godfather (last tested on r09).
+
+### Cause
+
+The same startup packets were tested on two laptops under Linux, using a small program in place of the Linux driver:
+
+| | USB chip handling the pad | Packets delivered | Pad's response |
+|---|---|---|---|
+| Dell laptop | xHCI | Yes | Powers on and sends input within about 15 ms |
+| HP dv7, direct | UHCI | Yes | Nothing in 15 s, stays dark |
+| HP dv7, through the hub | EHCI | Yes | Powers on and sends input within about 15 ms |
+
+The dv7 behaves the same under XP and Linux, so neither XP nor the driver's packets are the main cause. The pad still runs at 12 Mbit/s on the hub, so this isn't a speed limit either. Either the UHCI path or the power from the laptop's port is responsible; the test hub had its own power adapter, so the two haven't been separated. Power looks less likely, because all four rumble motors run on the direct port once the pad is on. This corrects the "USB 2.0" guess in r08: the laptop has USB 2.0 ports, but the pad's traffic went through their UHCI companion controller.
+
+Delayed power-on (up to 30 s) and USB remote wakeup were tested on the Dell laptop under Linux and ruled out.
+
+### Driver: startup matching Linux xpad
+
+A usbmon capture of a Linux laptop, where the same Series X|S pad powers on by itself, shows this complete startup: SET_CONFIGURATION, start the IN read, SET_INTERFACE(1, 0), power-on, LED, auth-done. Interface 0 stays on setting 0, and the pad answers with input 13 ms after the first packet, without announcing itself. No further output was seen in about two minutes of the capture.
+
+* xpad mode now follows that order and **is the default** (`XGIP_XPAD_MODE`). Removed from it: SET_INTERFACE(2, 0) and the retries. An announce gets the same three packets again, so the Xbox button still works on a direct connection.
+* Interface 0 stays on setting 0, so input polling is 4 ms instead of 2 ms. The Windows-style startup remains available by building with `XGIP_XPAD_MODE=0`.
+* The experimental keep-alive stays off. It wasn't needed through the hub.
+
+### Known issues
+
+* **Direct connection on the tested laptop:** press the Xbox button after plugging in. Left idle, the pad shuts off and searches for its console; unplug and replug it to bring it back.
+* Only one laptop and one hub have been tested, so other setups may behave differently.
+
 ## r09 (2026-11-01): Xbox 360 compatibility packages
 
 The driver behaves as tested in r09 beta 3.
